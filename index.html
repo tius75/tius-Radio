@@ -1,0 +1,1893 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Player Tius</title>
+    <link rel="icon" href="favicon-32x32.png" type="image/png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="manifest" href="/Radio-Player-Cloud-Music-Tius/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Music Tius">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <link rel="apple-touch-startup-image" href="icons/icon-512x512.png">
+
+    <style>
+        :root {
+            /* Palet warna gelap ala Spotify */
+            --bg-dark: #121212; /* Latar belakang sangat gelap */
+            --card-dark: #1A1A1A; /* Latar belakang kartu sedikit lebih terang */
+            --text-light: #FFFFFF; /* Teks utama terang */
+            --text-medium: #B3B3B3; /* Teks sekunder/info */
+            --accent-green: #1DB954; /* Hijau khas Spotify */
+            --control-bg: #282828; /* Latar belakang kontrol */
+            --border-radius-lg: 16px; /* Sudut membulat lebih besar */
+            --border-radius-md: 8px;
+            --shadow-subtle: 0 4px 15px rgba(0, 0, 0, 0.4); /* Bayangan lebih gelap dan halus */
+            --shadow-deep: 0 8px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            color: var(--text-light);
+            padding-bottom: 90px;
+            box-sizing: border-box;
+            overflow-x: hidden; /* Prevent horizontal scroll for the body itself */
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 960px;
+            padding: 25px 20px;
+            box-sizing: border-box;
+            margin: 0 auto;
+            flex-grow: 1;
+        }
+
+        .player-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-top: 10px;
+        }
+
+        .player-header h1 {
+            color: var(--text-light);
+            font-size: 2.2em;
+            font-weight: 700;
+            letter-spacing: -0.05em;
+            margin: 0;
+        }
+
+        .section-heading {
+            color: var(--text-light);
+            font-size: 1.6em;
+            font-weight: 600;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* --- Generic Grid Layout (for Local Radio, Cloudinary - desktop only) --- */
+        /* Note: For Local Songs, we'll override this for mobile view */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); /* Default grid for smaller items */
+            gap: 12px;
+            padding-bottom: 15px;
+        }
+
+        .grid-item {
+            background-color: var(--control-bg);
+            border-radius: var(--border-radius-md);
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 130px;
+            aspect-ratio: 1 / 1;
+            box-shadow: var(--shadow-subtle);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .grid-item:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-deep);
+        }
+
+        .grid-item.playing {
+            border: 2px solid var(--accent-green);
+            box-shadow: 0 0 15px rgba(29, 185, 84, 0.6);
+        }
+
+        .grid-item .background-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            filter: brightness(0.6);
+            z-index: 0;
+            transition: transform 0.3s ease;
+        }
+
+        .grid-item:hover .background-image {
+            transform: scale(1.05);
+        }
+
+        .grid-item-content {
+            position: relative;
+            z-index: 1;
+            color: var(--text-light);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            flex-grow: 1;
+        }
+
+        .grid-item-content h3 {
+            font-size: 1em;
+            margin: 5px 0 0;
+            font-weight: 600;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            padding: 0 5px;
+        }
+
+        .grid-item .item-image { /* For grid items that use direct img tags (like local radio) */
+            width: 100%;
+            height: auto;
+            border-radius: var(--border-radius-md);
+            margin-bottom: 8px;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+        }
+
+        .grid-item .play-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 2;
+        }
+
+        .grid-item:hover .play-overlay {
+            opacity: 1;
+        }
+
+        .grid-item .play-button {
+            background-color: var(--accent-green);
+            color: var(--bg-dark);
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            font-size: 1.4em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+            transition: transform 0.2s ease;
+        }
+
+        .grid-item .play-button:hover {
+            transform: scale(1.1);
+        }
+
+        /* --- Radio Internasional List View & Local Songs List View (2 columns for all screens) --- */
+        .radio-international-list-container,
+        #localSongsGrid.list-view,
+        #historyContainer .list-view { /* Added #historyContainer .list-view */
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* Always 2 columns on mobile and desktop */
+            gap: 15px;
+            padding-bottom: 20px;
+        }
+
+        .radio-international-list-item,
+        .local-song-list-item,
+        .history-list-item { /* Added .history-list-item */
+            background-color: var(--control-bg);
+            border-radius: var(--border-radius-md);
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            cursor: pointer;
+            box-shadow: var(--shadow-subtle);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .radio-international-list-item:hover,
+        .local-song-list-item:hover,
+        .history-list-item:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-deep);
+        }
+
+        .radio-international-list-item.playing,
+        .local-song-list-item.playing,
+        .history-list-item.playing {
+            border: 2px solid var(--accent-green);
+            box-shadow: 0 0 15px rgba(29, 185, 84, 0.6);
+        }
+
+        .radio-international-list-item .radio-image,
+        .local-song-list-item .song-image,
+        .history-list-item .item-image { /* Added .history-list-item .item-image */
+            width: 60px;
+            height: 50px;
+            border-radius: var(--border-radius-md);
+            object-fit: cover;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .radio-international-list-item .radio-info,
+        .local-song-list-item .song-info-text,
+        .history-list-item .item-info-text { /* Added .history-list-item .item-info-text */
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .radio-international-list-item .radio-info h3,
+        .local-song-list-item .song-info-text h3,
+        .history-list-item .item-info-text h3 { /* Added .history-list-item .item-info-text h3 */
+            font-size: 0.8em;
+            margin: 0;
+            font-weight: 600;
+            color: var(--text-light);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .radio-international-list-item .radio-info p,
+        .local-song-list-item .song-info-text p,
+        .history-list-item .item-info-text p { /* Added .history-list-item .item-info-text p */
+            font-size: 0.85em;
+            color: var(--text-medium);
+            margin: 2px 0 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .radio-international-list-item .play-overlay,
+        .local-song-list-item .play-overlay,
+        .history-list-item .play-overlay { /* Added .history-list-item .play-overlay */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding-right: 15px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 2;
+        }
+
+        .radio-international-list-item:hover .play-overlay,
+        .local-song-list-item:hover .play-overlay,
+        .history-list-item:hover .play-overlay {
+            opacity: 1;
+        }
+
+        .radio-international-list-item .play-button,
+        .local-song-list-item .play-button,
+        .history-list-item .play-button { /* Added .history-list-item .play-button */
+            background-color: var(--accent-green);
+            color: var(--bg-dark);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+            transition: transform 0.2s ease;
+        }
+
+        .radio-international-list-item .play-button:hover,
+        .local-song-list-item .play-button:hover,
+        .history-list-item .play-button:hover {
+            transform: scale(1.1);
+        }
+
+        /* --- Cloudinary Songs: Multi-Row Sliding with Categories (MOBILE FIRST) --- */
+        .cloudinary-category-section {
+            margin-bottom: 20px;
+        }
+
+        .cloudinary-category-section h3 {
+            color: var(--text-light);
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            padding-left: 5px; /* Slight padding to align with items */
+        }
+
+        .cloudinary-horizontal-scroll-row {
+            display: grid;
+            grid-auto-flow: column; /* Items flow horizontally */
+            grid-auto-columns: 140px; /* Each item takes a fixed width for clear separation */
+            gap: 39px;
+            overflow-x: auto; /* Enable horizontal scrolling */
+            padding-bottom: 10px; /* Space for scrollbar */
+            scroll-snap-type: x mandatory; /* Smooth snapping effect */
+            -webkit-overflow-scrolling: touch; /* Smoother scrolling on iOS */
+            padding-right: 20px;
+        }
+
+        /* Hide scrollbar for aesthetic purposes (optional) */
+        .cloudinary-horizontal-scroll-row::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .cloudinary-horizontal-scroll-row::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+
+        .cloudinary-horizontal-scroll-row::-webkit-scrollbar-track {
+            background-color: transparent;
+        }
+
+        /* Cloudinary items will use the generic grid-item styling */
+        .cloudinary-horizontal-scroll-row .grid-item {
+            scroll-snap-align: start; /* Snap items to start when scrolling */
+            flex-shrink: 0; /* Prevent items from shrinking below 140px */
+            width: 140px; /* Explicitly set width to match grid-auto-columns */
+        }
+
+
+        /* Footer Global Audio Player */
+        .footer-player {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--card-dark);
+            padding: 10px 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column; /* Changed to column for better mobile layout */
+            align-items: flex-start; /* Align items to start */
+            justify-content: center;
+            box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            height: 100px; /* Increased height to accommodate new elements */
+        }
+
+        .footer-player .top-row {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 5px; /* Space between top row and progress bar */
+        }
+
+        .footer-player .song-info {
+            flex-grow: 1;
+            margin-right: 15px;
+            white-space: nowrap; /* Default behavior: text truncated */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.9em;
+            color: var(--text-medium);
+            padding-right: 10px; /* Add some padding to prevent text from touching controls */
+        }
+
+        .footer-player .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-end; /* Push controls to the right */
+        }
+
+        .footer-player .control-button {
+            background-color: var(--control-bg);
+            color: var(--text-light);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        .footer-player .control-button:hover {
+            background-color: #383838;
+            transform: scale(1.05);
+        }
+
+        .footer-player #globalPlayPauseButton {
+            background-color: var(--accent-green);
+            color: var(--bg-dark);
+            width: 50px;
+            height: 50px;
+            font-size: 1.5em;
+        }
+
+        .footer-player #globalPlayPauseButton:hover {
+            background-color: #1ed760;
+            transform: scale(1.1);
+        }
+
+        .footer-player .control-button:disabled {
+            background-color: #333;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .footer-player #globalRepeatButton.active {
+            color: var(--accent-green);
+        }
+
+        .footer-player audio {
+            display: none;
+        }
+
+        /* Progress Bar Styling */
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            cursor: pointer;
+            margin-top: 5px;
+            margin-bottom: 5px; /* Space from controls */
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: var(--accent-green);
+            border-radius: 3px;
+            transition: width 0.1s linear;
+        }
+
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-size: 0.75em;
+            color: var(--text-medium);
+            margin-top: 3px;
+        }
+
+        .upload-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+            justify-content: center;
+        }
+
+        .upload-buttons button {
+            background-color: var(--accent-green);
+            color: var(--bg-dark);
+            border: none;
+            border-radius: var(--border-radius-md);
+            padding: 10px 15px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .upload-buttons button:hover {
+            background-color: #1ed760;
+            transform: translateY(-2px);
+        }
+
+
+        /* Media Queries for Mobile View (< 768px) */
+        @media (max-width: 767px) {
+            /* Override for Local Songs Grid to be list-view */
+            #localSongsGrid.list-view {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr); /* 2 columns for local songs */
+                gap: 15px; /* Consistent gap with international radio */
+            }
+
+            /* Hide default grid-item background and play overlay for list view */
+            #localSongsGrid.list-view .grid-item .background-image {
+                display: none;
+            }
+            #localSongsGrid.list-view .grid-item .play-overlay {
+                /* Play overlay is already handled by .local-song-list-item .play-overlay */
+            }
+
+            /* Apply list-item styling to grid-items inside localSongsGrid when it's in list-view */
+            #localSongsGrid.list-view .grid-item {
+                /* Reset properties from default .grid-item that don't apply to list style */
+                min-height: auto;
+                aspect-ratio: auto;
+                padding: 10px; /* Match international radio list padding */
+
+                /* Inherit list-item specific styles */
+                display: flex;
+                flex-direction: row; /* Horizontal layout for list */
+                align-items: center;
+                justify-content: flex-start;
+            }
+
+            #localSongsGrid.list-view .grid-item .grid-item-content {
+                text-align: left; /* Align text to left */
+                align-items: flex-start; /* Align content to start */
+                flex-grow: 1;
+                flex-direction: column; /* Stack text info vertically */
+            }
+
+            #localSongsGrid.list-view .grid-item .grid-item-content h3 {
+                font-size: 1.1em;
+                margin: 0;
+                padding: 0; /* Remove internal padding */
+                text-shadow: none; /* Remove text shadow */
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                width: 100%;
+                color: var(--text-light);
+            }
+
+            /* Add a placeholder for a song image */
+            #localSongsGrid.list-view .grid-item .song-image-placeholder {
+                width: 60px;
+                height: 60px;
+                border-radius: var(--border-radius-md);
+                background-color: rgba(255, 255, 255, 0.1); /* Subtle placeholder background */
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                font-size: 1.5em;
+                color: var(--text-medium);
+                margin-right: 15px;
+                flex-shrink: 0;
+                overflow: hidden; /* Ensure anything within is clipped */
+            }
+
+            #localSongsGrid.list-view .grid-item .play-button {
+                /* Adjust play button size for list view */
+                width: 40px;
+                height: 40px;
+                font-size: 1.2em;
+            }
+
+            /* Specific styling for the placeholder item in localSongsGrid */
+            #localSongsGrid .grid-item.placeholder {
+                /* Ensure placeholder remains as a single, full-width item */
+                grid-column: 1 / -1; /* Span across all columns */
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-end;
+                min-height: 130px; /* Keep original height for visual cue */
+                aspect-ratio: 1 / 1;
+                padding: 12px;
+            }
+
+            #localSongsGrid .grid-item.placeholder .background-image {
+                display: block; /* Show background image for placeholder */
+            }
+
+            #localSongsGrid .grid-item.placeholder .grid-item-content {
+                text-align: center;
+                align-items: center;
+            }
+
+            #localSongsGrid .grid-item.placeholder .grid-item-content h3 {
+                font-size: 1em;
+                padding: 0 5px;
+                text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+            }
+
+            /* Mobile Footer Player Adjustments */
+            .footer-player {
+                flex-direction: column; /* Stack elements vertically */
+                height: 110px; /* Adjust height for more content */
+                padding: 10px 15px; /* Smaller padding on mobile */
+            }
+
+            .footer-player .top-row {
+                flex-direction: row; /* Keep info and controls side-by-side in the top row */
+                width: 100%;
+                justify-content: space-between; /* Space out info and controls */
+                margin-bottom: 8px; /* Space between top row and progress bar */
+            }
+
+            /* REVISI: Mengatasi teks "Sedang diputar" terpotong */
+            .footer-player .song-info {
+                flex-grow: 1; /* Allow song info to take available space */
+                margin-right: 10px; /* Less margin */
+                white-space: normal; /* IZINKAN TEKS UNTUK MELUAP KE BAWAH */
+                overflow: hidden;    /* Tetap hidden untuk rapi, tapi sekarang teks akan wrap */
+                text-overflow: ellipsis; /* Akan berfungsi jika satu baris sangat panjang */
+                font-size: 0.85em; /* Mungkin perlu sedikit diperkecil */
+                line-height: 1.3; /* Menambahkan sedikit spasi baris */
+                max-height: 2.6em; /* Batasi hingga 2 baris (font-size * line-height * 2) */
+                display: -webkit-box; /* Untuk membatasi baris dengan ellipsis */
+                -webkit-line-clamp: 2; /* Batasi 2 baris */
+                -webkit-box-orient: vertical;
+            }
+
+            .footer-player .controls {
+                gap: 8px; /* Smaller gap for buttons */
+            }
+
+            .footer-player .control-button {
+                width: 38px;
+                height: 38px;
+                font-size: 1em;
+            }
+
+            .footer-player #globalPlayPauseButton {
+                width: 48px;
+                height: 48px;
+                font-size: 1.4em;
+            }
+
+            .progress-container {
+                margin-top: 0; /* Adjust margin */
+                margin-bottom: 0;
+            }
+
+            .time-display {
+                margin-top: 5px; /* Space above time display */
+            }
+        }
+
+        /* Media Queries for Desktop */
+        @media (min-width: 768px) {
+            .main-container {
+                padding: 40px 30px;
+            }
+
+            .player-header h1 {
+                font-size: 3em;
+            }
+
+            .section-heading {
+                font-size: 2em;
+                margin-top: 40px;
+            }
+
+            /* Desktop: Local Radio and Local Songs standard responsive grids */
+            .grid-container {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                gap: 20px;
+            }
+
+            .grid-item {
+                min-height: 160px;
+                padding: 15px;
+            }
+
+            .grid-item-content h3 {
+                font-size: 1.1em;
+            }
+
+            .grid-item .play-button {
+                width: 50px;
+                height: 50px;
+                font-size: 1.6em;
+            }
+
+            /* Desktop: Radio Internasional List remains 2 columns */
+            .radio-international-list-container {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+            .radio-international-list-item .radio-image {
+                width: 70px;
+                height: 70px;
+            }
+            .radio-international-list-item .radio-info h3 {
+                font-size: 1.2em;
+            }
+            .radio-international-list-item .radio-info p {
+                font-size: 0.95em;
+            }
+            .radio-international-list-item .play-button {
+                width: 45px;
+                height: 45px;
+                font-size: 1.3em;
+            }
+
+            /* Desktop: Cloudinary container becomes a standard responsive grid (no horizontal scroll) */
+            .cloudinary-horizontal-scroll-row {
+                display: grid; /* Change from flex to grid */
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); /* Standard responsive grid */
+                grid-auto-flow: row; /* Items flow vertically in rows */
+                overflow-x: hidden; /* Hide scrollbar on desktop */
+                gap: 20px; /* Larger gap for desktop */
+                scroll-snap-type: none; /* Disable snap */
+                grid-auto-columns: unset; /* Remove fixed width */
+                padding-bottom: 0; /* No scrollbar space needed */
+                padding-right: 0; /* No padding-right needed for desktop grid */
+            }
+
+            .cloudinary-horizontal-scroll-row .grid-item {
+                width: auto; /* Allow items to adjust width based on grid */
+            }
+
+            /* Desktop Footer Player Adjustments */
+            .footer-player {
+                flex-direction: row; /* Horizontal layout for desktop */
+                height: 90px;
+                padding: 15px 30px;
+                justify-content: space-between; /* Space out items horizontally */
+            }
+
+            .footer-player .top-row {
+                width: auto; /* Allow content to dictate width */
+                margin-bottom: 0; /* No bottom margin needed */
+                flex-grow: 1; /* Allow top row to grow */
+            }
+
+            .footer-player .song-info {
+                font-size: 1.1em;
+                margin-right: 20px; /* More margin */
+                padding-right: 0;
+                white-space: nowrap; /* Kembali ke nowrap di desktop */
+                max-height: none; /* Hapus batasan baris di desktop */
+                -webkit-line-clamp: unset;
+            }
+
+            .footer-player .controls {
+                gap: 15px; /* Larger gap for buttons */
+                flex-shrink: 0; /* Prevent controls from shrinking */
+            }
+
+            .footer-player .control-button {
+                width: 45px;
+                height: 45px;
+                font-size: 1.2em;
+            }
+
+            .footer-player #globalPlayPauseButton {
+                width: 60px;
+                height: 60px;
+                font-size: 1.8em;
+            }
+
+            .progress-container {
+                position: absolute; /* Position above content for full width */
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 6px;
+                border-radius: 0; /* No rounded corners */
+                cursor: col-resize; /* Indicate resize capability */
+            }
+
+            .time-display {
+                position: absolute;
+                bottom: 5px; /* Adjust position */
+                left: 30px; /* Align with padding */
+                width: calc(100% - 60px); /* Adjust width */
+                margin-top: 0; /* Remove top margin */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="player-header">
+            <h1>Music Player Tius</h1>
+        </div>
+
+        <h2 class="section-heading">Radio Lokal</h2>
+        <div class="grid-container" id="localRadioGrid"></div>
+
+        <h2 class="section-heading">Radio Internasional</h2>
+        <div class="radio-international-list-container" id="internationalRadioList"></div>
+
+        <h2 class="section-heading">Lagu Cloud</h2>
+        <div id="cloudinaryCategoriesContainer"></div>
+
+        <h2 class="section-heading">Aktivitas Anda</h2>
+        <div id="historyContainer" class="list-view">
+            <p style="color: var(--text-medium); text-align: center; padding: 20px;">Belum ada aktivitas. Mulai putar lagu atau radio!</p>
+        </div>
+
+        <h2 class="section-heading">Lagu Lokal Anda</h2>
+        <div class="file-upload-section">
+            <p style="color: var(--text-medium); font-size: 0.9em; margin-bottom: 10px;">
+                Lagu lokal akan disimpan di browser Anda dan tersedia bahkan setelah menutup halaman.
+            </p>
+            <div class="upload-buttons">
+                <button id="selectMultipleFilesBtn"><i class="fas fa-file-audio"></i> Pilih Banyak Lagu</button>
+                <button id="selectFolderBtn"><i class="fas fa-folder"></i> Pilih Folder Lagu</button>
+            </div>
+            <input type="file" id="file-input-multiple" multiple accept=".mp3,.aac,.flac,.wav" style="display: none;">
+            <input type="file" id="file-input-folder" webkitdirectory directory accept=".mp3,.aac,.flac,.wav" style="display: none;">
+        </div>
+
+        <div class="grid-container" id="localSongsGrid">
+            <div class="grid-item placeholder">
+                <div class="background-image" style="background-image: url('https://picsum.photos/300/300?random=1'); filter: brightness(0.4);"></div>
+                <div class="grid-item-content">
+                    <h3>Pilih lagu dari perangkat Anda...</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-player">
+        <audio id="audioPlayer" controls></audio>
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="time-display">
+            <span id="currentTime">00:00</span>
+            <span id="durationTime">00:00</span>
+        </div>
+        <div class="top-row">
+            <div class="song-info" id="current-song-info">Silakan pilih lagu atau radio.</div>
+            <div class="controls">
+                <button class="control-button" id="globalPrevButton" title="Sebelumnya" disabled><i class="fas fa-backward"></i></button>
+                <button class="control-button" id="globalPlayPauseButton" title="Putar / Jeda"><i class="fas fa-play"></i></button>
+                <button class="control-button" id="globalNextButton" title="Berikutnya" disabled><i class="fas fa-forward"></i></button>
+                <button class="control-button" id="globalRepeatButton" title="Ulangi" disabled><i class="fas fa-redo-alt"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+      // PWA: Daftarkan Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        // PASTIKAN PATH INI SESUAI DENGAN STRUKTUR REPOSITORI GITHUB PAGES ANDA
+      navigator.serviceWorker.register('/Radio-Player-Cloud-Music-Tius/service-worker.js')
+            .then(registration => {
+                console.log('ServiceWorker registered with scope:', registration.scope);
+            })
+            .catch(error => {
+                console.error('ServiceWorker registration failed:', error);
+            });
+    });
+}
+
+        const audioPlayer = document.getElementById('audioPlayer');
+        const globalPlayPauseButton = document.getElementById('globalPlayPauseButton');
+        const globalPrevButton = document.getElementById('globalPrevButton');
+        const globalNextButton = document.getElementById('globalNextButton');
+        const globalRepeatButton = document.getElementById('globalRepeatButton');
+        const currentSongInfo = document.getElementById('current-song-info');
+        const localRadioGrid = document.getElementById('localRadioGrid');
+        const internationalRadioList = document.getElementById('internationalRadioList');
+        const cloudinaryCategoriesContainer = document.getElementById('cloudinaryCategoriesContainer');
+        const localSongsGrid = document.getElementById('localSongsGrid');
+        const fileInputMultiple = document.getElementById('file-input-multiple');
+        const fileInputFolder = document.getElementById('file-input-folder');
+        const selectMultipleFilesBtn = document.getElementById('selectMultipleFilesBtn');
+        const selectFolderBtn = document.getElementById('selectFolderBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressContainer = document.querySelector('.progress-container');
+        const currentTimeSpan = document.getElementById('currentTime');
+        const durationTimeSpan = document.getElementById('durationTime');
+        const historyContainer = document.getElementById('historyContainer');
+
+        const CLOUD_NAME = 'dbmkyd67b';
+        const CLOUDINARY_BASE_URL = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/`;
+
+        // --- IndexedDB Variables ---
+        let db;
+        const DB_NAME = 'MusicPlayerDB';
+        const STORE_NAME = 'localSongs';
+        const DB_VERSION = 1;
+
+        let playlist = []; // For local files loaded from IndexedDB
+        let cloudinaryPlaylist = []; // For cloudinary songs for next/prev functionality
+        let currentTrackIndex = -1; // Index for local playlist
+        let currentCloudinaryIndex = -1; // Index for cloudinary playlist
+        let currentPlayingType = null; // 'file', 'radio', 'cloudinary'
+        let isRepeating = false;
+        let currentPlayingGridItem = null; // To keep track of the currently highlighted UI item
+        let currentPlayingLocalFileUrl = null; // To store the Object URL for revocation
+
+        // Data Cloudinary diatur berdasarkan kategori
+        const cloudinarySongsByCategory = {
+            "Music Cloud Pop": [
+                { name: "Crystal Waters - Gypsy Woman", public_id: "15._Crystal_Waters_-_Gypsy_Woman_She_s_Homeless_x11jmi" },
+                { name: "Dina Carroll - Don't Be A Stranger", public_id: "18._Dina_Carroll_-_Don_t_Be_A_Stranger_tavmuz" },
+                { name: "The Tony Rich Project - Nobody Knows", public_id: "17._The_Tony_Rich_Project_-_Nobody_Knows_ff2yyp" },
+                { name: "M People - Don't Look Any Further", public_id: "16._M_People_-_Don_t_Look_Any_Further_zpngnm" },
+                { name: "Lana Del Rey - Born To Die", public_id: "04._Lana_Del_Rey_-_Born_To_Die_n01gnh" },
+                { name: "Billie Eilish - COPYCAT Sofi Tukker", public_id: "Billie_Eilish_-_COPYCAT_Sofi_Tukker_Remix_hkpiba" },
+                { name: "Dreams Of The San Joaquin", public_id: "06_Dreams_Of_The_San_Joaquin_ggvcow" },
+                { name: "Bono - Royal Blood Out of the Black", public_id: "13._Royal_Blood_-_Out_of_the_Black_ppdsrx" },
+                { name: "Madonna - Holiday", public_id: "29._Madonna_-_Holiday_7__Version_2022_Remaster_hodntn" },
+                { name: "Dolly Parton - I Will Always Love You", public_id: "13._Dolly_Parton_-_I_Will_Always_Love_You_mq3o8l" },
+                { name: "Minnie - Riperton - Lovin You", public_id: "23._Minnie_Riperton_-_Lovin_You_vpknfv" },
+                { name: "Barbra Streisand - Woman in Love", public_id: "12._Barbra_Streisand_-_Woman_in_Love_Album_Version_jiksvz" },
+                { name: "Maroon V - One Light", public_id: "v1749556971/07_One_Light_q5mpfv" },
+                { name: "Lady Gaga - Bad Romance", public_id: "30._Lady_Gaga_-_Bad_Romance_hmz3e5" },
+                { name: "John Lennon - Woman", public_id: "15._John_Lennon_-_Woman_Ultimate_Mix_ttv9q2" }
+            ],
+            "Music Cloud Rock": [
+                { name: "You And Your Friend", public_id: "06_-_You_And_Your_Friend_dexjzu" },
+                { name: "How Long", public_id: "12_-_How_Long_xhgwhh" },
+                { name: "On Every Street", public_id: "02_-_On_Every_Street_a6bjld" },
+                { name: "Al Green - Lets Stay Together", public_id: "24._Al_Green_-_Let_s_Stay_Together_lymfub" },
+                { name: "Ben E.King - Stand by Me", public_id: "20._Ben_E._King_-_Stand_by_Me_afedkq" },
+                { name: "Van Halen - You Really Got Me tduafs", public_id: "28._Van_Halen_-_You_Really_Got_Me_tduafs" },
+                { name: "Wings - Silly Love ", public_id: "08._Wings_-_Silly_Love_Songs_lvee4i" },
+                { name: "Serge Gainsbourg - Jet aime moi non", public_id: "14._Serge_Gainsbourg_-_Je_t_aime_moi_non_plus_c9cpjf" },
+                { name: "Royal_Blood - Out of the Black", public_id: "13._Royal_Blood_-_Out_of_the_Black_ppdsrx" },
+                { name: "Sam Cooke - What A Wonderful World", public_id: "19._Sam_Cooke_-_What_A_Wonderful_World_w2485r" },
+                { name: "The - Rolling - Stones - Angie", public_id: "07._The_Rolling_Stones_-_Angie_2020_wkrgax" },
+                { name: "Bill_Withers - I Want to Spend the Night", public_id: "21._Bill_Withers_-_I_Want_to_Spend_the_Night_wrgkyv" },
+                { name: "Bee Gees - How Deep Is Your Love", public_id: "10._Bee_Gees_-_How_Deep_Is_Your_Love_k3hyo3" },
+                { name: "Elton John - Your Song", public_id: "09._Elton_John_-_Your_Song_l8qxps" }
+            ],
+            "Music Cloud Indonesia": [
+                { name: "Reza Artamevia - Cintakan", public_id: "09_Cintakan_Membawamu_Kembali_xrfubr" },
+                { name: "Reza Artamevia - Aku Takut Jatuh Cinta", public_id: "07_Aku_Takut_Jatuh_Cinta_Lagi_usvixi" },
+                { name: "Reza Artamevia - Yang Kedua", public_id: "02_Yang_Kedua_u4xcxw" },
+                { name: "Reza Artamevia - Cinta Membawa Mu", public_id: "09_Cintakan_Membawamu_Kembali_hxyqvl" },
+                { name: "Reza Artamevia - Aku Wanita", public_id: "v1749562557/05_Aku_Wanita_urey6p" },
+                { name: "Reza Artamevia - Dansa", public_id: "v1749562555/03_Dansa_eyczub" },
+                { name: "Reza Artamevia - Terima Kasih", public_id: "08_Terima_Kasih_dbpkym" },
+                { name: "Reza Artamevia - Keabadian", public_id: "v1749562558/04_Keabadian_ndtd2l" },
+                { name: "Reza Artamevia - Biar Menjadi Kenangan", public_id: "01_Biar_Menjadi_Kenangan_gcnhj9" }
+            ],
+            "Music Cloud Mandarin": [
+                { name: "Mandarin - Zhang Xinzhe", public_id: "%E5%BC%B5%E4%BF%A1%E5%93%B2_-_%E5%BF%98%E6%83%85%E5%BF%98%E6%84%9B_xrcp9h" },
+                { name: "Mandarin - Zhang Huimei", public_id: "v1749562498/%E5%BC%B5%E6%83%A0%E5%A6%B9_-_%E5%88%A5%E5%9C%A8%E5%82%B7%E5%8F%A3%E7%81%91%E9%B9%BD_n9wnts" },
+                { name: "Mandarin - Zhang Huimei", public_id: "v1749562497/%E5%BC%B5%E6%83%A0%E5%A6%B9_-_%E8%81%BdB%E6%B5%B7_tzedvy" },
+                { name: "Mandarin - Zhang Huimei", public_id: "v1749562495/%E5%BC%B5%E6%83%A0%E5%A6%B9_-_%E7%89%BD%E6%89%8B_yezakf" },
+                { name: "Mandarin - Zhou Shen", public_id: "v1749562493/%E5%91%A8%E6%B7%B1_-_%E6%B8%B4%E6%9C%9B%E9%81%87%E8%A7%81_%E7%BD%91%E5%8F%B0%E5%89%A7_%E8%B0%81%E9%83%BD%E6%B8%B4%E6%9C%9B%E9%81%87%E8%A7%81%E4%BD%A0_%E4%B8%BB%E9%A2%98%E6%9B%B2_dobmtq" },
+                { name: "Mandarin - Pang Long", public_id: "v1749562473/%E5%BA%9E%E9%BE%99_-_%E4%B8%A4%E5%8F%AA%E8%9D%B4%E8%9D%B6_fsn5qo" },
+                { name: "Mandarin - Zhang Xinzhe", public_id: "v1749562458/%E5%BC%B5%E4%BF%A1%E5%93%B2_-_%E5%AF%AC%E5%AE%B9_rscssh" },
+                { name: "Mandarin - Zhou Shen", public_id: "v1749562457/%E5%91%A8%E6%B7%B1_-_%E8%87%A8%E5%AE%89%E5%88%9D%E9%9B%A8_agk9a5" },
+                { name: "Mandarin - Sunlu", public_id: "v1749562441/%E5%AD%99%E9%9C%B2_-_%E5%85%89%E8%BC%9D%E6%AD%B2%E6%9C%88_kibcj1" },
+                { name: "Mandarin - Xin Lang Ren", public_id: "v1749562367/2-07_%E6%96%B0%E6%B5%AA%E4%BA%BA%E6%83%85%E6%AD%8C_guf6da" },
+                { name: "Mandarin - Qing Ren Peng You", public_id: "v1749562323/2-02_%E6%83%85%E4%BA%BA%E6%9C%8B%E5%8F%8B_s5wsx4" },
+                { name: "Mandarin - Zai Du Zhong Feng", public_id: "v1749562338/2-05_%E5%86%8D%E5%BA%A6%E9%87%8D%E7%9B%B8%E9%80%A2_rwrlyc" },
+                { name: "Mandarin - Bie Zai Shuo", public_id: "v1749562329/2-04_%E5%88%AB%E5%86%8D%E8%AF%B4_o1ptej" },
+                { name: "Mandarin - Xiao Xiao Xin Niang Hua", public_id: "v1749562322/2-03_%E5%B0%8F%E5%B0%8F%E6%96%B0%E5%A8%B6%E8%8A%B1_ufbmbl" }
+            ],
+            "Music Cloud Disco": [
+                { name: "Karma", public_id: "v1749556974/11._Karma_ddvecq" },
+                { name: "Alan Walker - Fade", public_id: "Alan_Walker_-_Fade_ci0xjm" },
+                { name: "Alan Walker - Alone", public_id: "Alan_Walker_-_Alone_Pt._II_x1kntb" },
+                { name: "Alan Walker - Different World feat", public_id: "Alan_Walker_-_Different_World_feat._CORSAK_qeofmm" },
+                { name: "Imagine Dragons - Believer", public_id: "05._Imagine_Dragons_-_Believer_htdsdn" },
+                { name: "Alan_Walker - Faded", public_id: "Alan_Walker_-_Faded_Stereo_Blitz_Remix_j12qy9" },
+                { name: "Alan_Walker_-_Darkside_puwbsf", public_id: "Alan_Walker_-_Darkside_puwbsf" },
+                { name: "Billie Eilish - everything i wanted", public_id: "Billie_Eilish_-_everything_i_wanted_y6fsse" }
+            ]
+        };
+
+        const localRadioStations = [
+            { name: "Delta FM", url: "https://s1.cloudmu.id/listen/delta_fm/radio.mp3", img: "https://picsum.photos/300/300?random=1" },
+            { name: "Sonora FM", url: "https://cast1.my-control-panel.com/proxy/radioso1/stream", img: "https://picsum.photos/300/300?random=2" },
+            { name: "Kiss FM", url: "https://streaming.redboing.com/radio/8060/radio.mp3", img: "https://picsum.photos/300/300?random=2" },
+            { name: "Elshinta FM", url: "https://stream-ssl.arenastreaming.com:8000/jakarta", img: "https://picsum.photos/300/300?random=3" },
+            { name: "Sonora Bandung FM", url: "https://stream-ssl.arenastreaming.com:8005/bandung", img: "https://picsum.photos/300/300?random=4" },
+            { name: "Rock FM (Radiojar)", url: "https://n0a.radiojar.com/7csmg90fuqruv?1749393922=&rj-tok=AAABl1AKeMgAmgFKesYp8bzufg&rj-ttl=5", img: "https://picsum.photos/300/300?random=5" },
+            { name: "Classi FM (Jakarta)", url: "https://c4.siar.us:10340/stream/1/", img: "https://picsum.photos/300/300?random=6" },
+            { name: "90.4 FM Jakarta", url: "https://n06.radiojar.com/u7d8heq3bnzuv?rj-ttl=5&rj-tok=AAABl1M67YAA0y02W0u_zSFKNA", img: "https://picsum.photos/300/300?random=7" },
+            { name: "I-Radio Jakarta", url: "https://n13.radiojar.com/4ywdgup3bnzuv?rj-ttl=5&rj-tok=AAABl0m5q5sAbTFN_yZ1H9wFmw", img: "https://picsum.photos/300/300?random=8" },
+            { name: "100.4 FM", url: "https://streaming.klcbsofficial.com/listen/klcbs/klcbs", img: "https://picsum.photos/300/300?random=9" },
+            { name: "Track Radio FM", url: "https://n06.radiojar.com/rrqf78p3bnzuv?rj-ttl=5&rj-tok=AAABl1M_mM0AehuKQZB7zIDRaA", img: "https://picsum.photos/300/300?random=10" },
+            { name: "Motion Radio FM", url: "https://cast3.asurahosting.com/proxy/radios22/stream", img: "https://picsum.photos/300/300?random=19" },
+            { name: "Cerenim Radio FM", url: "https://ig.idstreamer.com:8090//live", img: "https://picsum.photos/300/300?random=20" },
+            { name: "Female Radio", url: "https://s1.cloudmu.id/listen/female_radio/radio.mp3", img: "https://picsum.photos/300/300?random=21" },
+            { name: "Ras FM 95.5 FM", url: "https://i.klikhost.com:9006/stream/1/", img: "https://picsum.photos/300/300?random=22" },
+            { name: "Zeno FM", url: "http://stream.zeno.fm/7xv04r3wzp8uv", img: "https://picsum.photos/300/300?random=23" }
+        ];
+
+        const internationalRadioStations = [
+            { name: "Soma FM", url: "https://ice1.somafm.com/groovesalad-128-mp3", img: "https://picsum.photos/60/60?random=11" },
+            { name: "KEXP-Radio", url: "https://kexp-mp3-128.streamguys1.com/kexp128.mp3", img: "https://picsum.photos/60/60?random=12" },
+            { name: "NPR FM", url: "https://npr-ice.streamguys1.com/live.mp3", img: "https://picsum.photos/60/60?random=13" },
+            { name: "Swiss Jazz ", url: "https://stream.srg-ssr.ch/m/rsj/mp3_128", img: "https://picsum.photos/60/60?random=14" },
+            { name: "Paradise FM", url: "https://stream.radioparadise.com/mp3-128", img: "https://picsum.photos/60/60?random=15" },
+            { name: "987 SingFM", url: "https://22893.live.streamtheworld.com/987FM.mp3", img: "https://picsum.photos/60/60?random=16" },
+            { name: "Capital FM", url: "https://media-ssl.musicradio.com/Capital", img: "https://picsum.photos/60/60?random=17" },
+            { name: "Paradise 2 ", url: "https://stream.radioparadise.com/aac-128", img: "https://picsum.photos/60/60?random=18" }
+        ];
+
+        // Populate cloudinaryPlaylist for next/prev functionality
+        for (const category in cloudinarySongsByCategory) {
+            cloudinaryPlaylist = cloudinaryPlaylist.concat(cloudinarySongsByCategory[category].map(song => ({
+                name: song.name,
+                type: 'cloudinary',
+                public_id: song.public_id
+            })));
+        }
+
+        // --- IndexedDB Functions ---
+        function openIndexedDB() {
+            return new Promise((resolve, reject) => {
+                // Periksa dukungan IndexedDB
+                if (!window.indexedDB) {
+                    alert("Browser Anda tidak mendukung IndexedDB. Fitur lagu lokal tidak akan berfungsi.");
+                    console.error("Browser does not support IndexedDB.");
+                    reject("IndexedDB not supported");
+                    return;
+                }
+
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        // Buat object store dengan 'id' sebagai primary key yang otomatis bertambah
+                        // dan 'name' sebagai indeks untuk pencarian cepat
+                        const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                        objectStore.createIndex('name', 'name', { unique: false });
+                        console.log('IndexedDB object store created/upgraded.');
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log('IndexedDB opened successfully.');
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    console.error('Error opening IndexedDB:', event.target.errorCode, event.target.error);
+                    reject('Error opening IndexedDB');
+                };
+            });
+        }
+
+        async function saveSongToIndexdDB(file) {
+            return new Promise((resolve, reject) => {
+                if (!db) {
+                    reject('IndexedDB not initialized.');
+                    return;
+                }
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const objectStore = transaction.objectStore(STORE_NAME);
+
+                const songData = {
+                    name: file.name,
+                    type: file.type, // MIME type of the file
+                    fileContent: file // Store the File/Blob object itself
+                };
+
+                const request = objectStore.add(songData);
+
+                request.onsuccess = () => {
+                    console.log(`Song "${file.name}" added to IndexedDB with ID: ${request.result}`);
+                    resolve({ id: request.result, ...songData }); // Return data with the ID given by IndexedDB
+                };
+
+                request.onerror = (event) => {
+                    console.error(`Error adding song "${file.name}" to IndexedDB:`, event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        async function loadSongsFromIndexedDB() {
+            return new Promise((resolve, reject) => {
+                if (!db) {
+                    reject('IndexedDB not initialized.');
+                    return;
+                }
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.getAll();
+
+                request.onsuccess = (event) => {
+                    const songs = event.target.result.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        type: 'file', // Type is 'file' for local songs
+                        fileContent: item.fileContent // This is the Blob/File stored
+                    }));
+                    console.log('Songs loaded from IndexedDB:', songs);
+                    resolve(songs);
+                };
+
+                request.onerror = (event) => {
+                    console.error('Error loading songs from IndexedDB:', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        // --- Utility Functions ---
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${minutes < 10 ? '0' : ''}${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function updateProgressBar() {
+            const { currentTime, duration } = audioPlayer;
+            const progressPercent = (currentTime / duration) * 100;
+            progressBar.style.width = `${progressPercent}%`;
+            currentTimeSpan.textContent = formatTime(currentTime);
+            durationTimeSpan.textContent = isNaN(duration) ? '00:00' : formatTime(duration);
+        }
+
+        // --- Core Audio Player Logic ---
+        function loadAndPlaySource(sourceObj, currentClickedItem = null) {
+            audioPlayer.pause();
+            audioPlayer.currentTime = 0;
+
+            // Revoke previous Object URL if it was a local file
+            if (currentPlayingLocalFileUrl) {
+                URL.revokeObjectURL(currentPlayingLocalFileUrl);
+                currentPlayingLocalFileUrl = null;
+            }
+
+            // Clear current 'playing' state from all elements
+            if (currentPlayingGridItem) {
+                currentPlayingGridItem.classList.remove('playing');
+            }
+            document.querySelectorAll('.history-list-item.playing').forEach(item => item.classList.remove('playing'));
+
+
+            globalPlayPauseButton.innerHTML = '<i class="fas fa-pause"></i>';
+            currentPlayingType = sourceObj.type;
+
+            if (sourceObj.type === 'file') {
+                audioPlayer.loop = isRepeating;
+                // PENTING: Pastikan sourceObj.fileContent berisi Blob/File yang sebenarnya
+                if (sourceObj.fileContent instanceof Blob || sourceObj.fileContent instanceof File) {
+                    currentPlayingLocalFileUrl = URL.createObjectURL(sourceObj.fileContent);
+                    audioPlayer.src = currentPlayingLocalFileUrl;
+                } else {
+                    console.error("sourceObj.fileContent is not a Blob/File:", sourceObj.fileContent);
+                    alert("Gagal memutar lagu lokal: Data file tidak valid.");
+                    globalPlayPauseButton.innerHTML = '<i class="fas fa-play"></i>';
+                    currentSongInfo.textContent = `Gagal memutar: ${sourceObj.name}`;
+                    return; // Hentikan eksekusi jika file tidak valid
+                }
+
+                currentSongInfo.textContent = `Sedang diputar: ${sourceObj.name}`;
+                // Find by ID, assuming playlist holds objects with 'id' and 'fileContent'
+                currentTrackIndex = playlist.findIndex(item => item.id === sourceObj.id);
+                globalPrevButton.disabled = (currentTrackIndex === 0);
+                globalNextButton.disabled = (currentTrackIndex === playlist.length - 1);
+                globalRepeatButton.disabled = false;
+            } else if (sourceObj.type === 'radio') {
+                audioPlayer.loop = false;
+                globalRepeatButton.classList.remove('active');
+                audioPlayer.src = sourceObj.url;
+                currentSongInfo.textContent = `Sedang mendengarkan: ${sourceObj.name}`;
+                globalPrevButton.disabled = true;
+                globalNextButton.disabled = true;
+                globalRepeatButton.disabled = true;
+            } else if (sourceObj.type === 'cloudinary') {
+                audioPlayer.loop = isRepeating;
+                audioPlayer.src = `${CLOUDINARY_BASE_URL}${sourceObj.public_id}.mp3`;
+                currentSongInfo.textContent = `Sedang diputar: ${sourceObj.name}`;
+                currentCloudinaryIndex = cloudinaryPlaylist.findIndex(item => item.public_id === sourceObj.public_id);
+                globalPrevButton.disabled = (currentCloudinaryIndex === 0);
+                globalNextButton.disabled = (currentCloudinaryIndex === cloudinaryPlaylist.length - 1);
+                globalRepeatButton.disabled = false;
+            }
+
+            // Highlight the clicked item or the item corresponding to the playing track
+            if (currentClickedItem) {
+                currentClickedItem.classList.add('playing');
+                currentPlayingGridItem = currentClickedItem;
+            } else { // If playing from history or next/prev, find the corresponding item in the UI and highlight it
+                let itemToHighlight = null;
+                if (sourceObj.type === 'file') {
+                    // Periksa jika ada ID yang valid untuk mencari item di UI
+                    if (sourceObj.id) {
+                        itemToHighlight = localSongsGrid.querySelector(`.local-song-list-item[data-id="${CSS.escape(sourceObj.id)}"]`);
+                    } else {
+                        // Fallback jika ID tidak ada (misal dari history lama tanpa ID), gunakan nama
+                        itemToHighlight = localSongsGrid.querySelector(`.local-song-list-item[data-name="${CSS.escape(sourceObj.name)}"]`);
+                    }
+                } else if (sourceObj.type === 'radio') {
+                    itemToHighlight = document.querySelector(`.radio-international-list-item[data-url="${CSS.escape(sourceObj.url)}"]`) ||
+                                        document.querySelector(`.grid-item[data-url="${CSS.escape(sourceObj.url)}"]`);
+                } else if (sourceObj.type === 'cloudinary') {
+                    itemToHighlight = cloudinaryCategoriesContainer.querySelector(`[data-public-id="${CSS.escape(sourceObj.public_id)}"]`);
+                }
+                if (itemToHighlight) {
+                    itemToHighlight.classList.add('playing');
+                    currentPlayingGridItem = itemToHighlight;
+                }
+            }
+
+
+            audioPlayer.load();
+            audioPlayer.play().then(() => {
+                globalPlayPauseButton.innerHTML = '<i class="fas fa-pause"></i>';
+                // Only update history for actual audio sources (files, cloudinary, radio)
+                updateHistory(sourceObj.name, sourceObj.type, sourceObj.img, sourceObj.id, sourceObj.public_id, sourceObj.url);
+            }).catch(e => {
+                console.error('Error playing audio:', e);
+                let errorMessage = `Gagal memutar "${sourceObj.name}".\n\n`;
+                if (e.name === 'NotAllowedError' || e.name === 'AbortError') {
+                    errorMessage += "1. Browser memblokir pemutaran otomatis. Silakan coba klik tombol play di kontrol bawah.";
+                } else if (e.message.includes("Failed to load because no supported source was found") || e.message.includes("Mixed Content")) {
+                    errorMessage += "2. Konten campuran (Mixed Content): URL radio adalah HTTP dan halaman Anda HTTPS, atau URL tidak valid/offline.";
+                } else {
+                    errorMessage += "3. Terjadi kesalahan tak terduga. URL mungkin tidak valid atau stasiun sedang offline.";
+                }
+                alert(errorMessage);
+                globalPlayPauseButton.innerHTML = '<i class="fas fa-play"></i>';
+                currentSongInfo.textContent = `Gagal memutar: ${sourceObj.name}`;
+                audioPlayer.src = '';
+                if (currentPlayingGridItem) {
+                    currentPlayingGridItem.classList.remove('playing');
+                    currentPlayingGridItem = null;
+                }
+                if (currentPlayingLocalFileUrl) {
+                    URL.revokeObjectURL(currentPlayingLocalFileUrl);
+                    currentPlayingLocalFileUrl = null;
+                }
+            });
+        }
+
+        // --- Handle File Uploads and Render Local Songs ---
+        async function addFilesToPlaylist(files) {
+            localSongsGrid.innerHTML = ''; // Clear existing content
+            playlist = []; // Clear in-memory playlist for new uploads
+
+            const filePromises = Array.from(files).map(async (file) => {
+                if (file.type.startsWith('audio/')) {
+                    try {
+                        const savedSong = await saveSongToIndexdDB(file);
+                        return savedSong;
+                    } catch (error) {
+                        console.error(`Failed to save ${file.name} to IndexedDB:`, error);
+                        alert(`Gagal menyimpan "${file.name}" ke penyimpanan lokal. Mungkin ada masalah dengan file atau kuota penyimpanan.`);
+                        return null;
+                    }
+                }
+                return null;
+            });
+
+            const savedSongs = await Promise.all(filePromises);
+            playlist = savedSongs.filter(song => song !== null); // Update playlist with successfully saved songs
+
+            renderLocalSongs(); // Render the UI for local songs
+
+            if (playlist.length === 0) {
+                localSongsGrid.classList.remove('list-view');
+                localSongsGrid.innerHTML = `
+                    <div class="grid-item placeholder">
+                        <div class="background-image" style="background-image: url('https://picsum.photos/300/300?random=1'); filter: brightness(0.4);"></div>
+                        <div class="grid-item-content">
+                            <h3>Pilih lagu dari perangkat Anda...</h3>
+                        </div>
+                    </div>
+                `;
+                currentSongInfo.textContent = 'Belum ada lagu yang dipilih.';
+                globalPrevButton.disabled = true;
+                globalNextButton.disabled = true;
+                globalRepeatButton.disabled = true;
+                globalPlayPauseButton.innerHTML = '<i class="fas fa-play"></i>';
+                audioPlayer.src = '';
+            } else {
+                localSongsGrid.classList.add('list-view');
+                alert("Lagu lokal telah dimuat dan disimpan secara permanen di browser Anda!");
+            }
+        }
+
+        function renderLocalSongs() {
+            localSongsGrid.innerHTML = ''; // Clear existing content
+
+            if (playlist.length === 0) {
+                localSongsGrid.classList.remove('list-view'); // Remove list-view if no songs
+                localSongsGrid.innerHTML = `
+                    <div class="grid-item placeholder">
+                        <div class="background-image" style="background-image: url('https://picsum.photos/300/300?random=1'); filter: brightness(0.4);"></div>
+                        <div class="grid-item-content">
+                            <h3>Pilih lagu dari perangkat Anda...</h3>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            localSongsGrid.classList.add('list-view'); // Ensure list-view class is present
+            playlist.sort((a, b) => a.name.localeCompare(b.name));
+
+            playlist.forEach((track, index) => {
+                const listItem = document.createElement('div');
+                listItem.classList.add('grid-item', 'local-song-list-item');
+                listItem.dataset.index = index; // Used for next/prev button logic
+                listItem.dataset.id = track.id; // Store IndexedDB ID for retrieval/highlighting
+
+                const randomImageUrl = `https://picsum.photos/60/60?random=${Math.floor(Math.random() * 1000)}`;
+                listItem.innerHTML = `
+                    <img class="song-image" src="${randomImageUrl}" alt="Album cover">
+                    <div class="song-info-text">
+                        <h3>${track.name.split('.').slice(0, -1).join('.')}</h3>
+                        <p>Lagu Lokal</p>
+                    </div>
+                    <div class="play-overlay">
+                        <button class="play-button"><i class="fas fa-play"></i></button>
+                    </div>
+                `;
+
+                listItem.addEventListener('click', () => {
+                    // PENTING: Saat memutar dari daftar lagu lokal, kita sudah memiliki 'track.fileContent'
+                    // yang merupakan Blob/File dari IndexedDB. Langsung gunakan ini.
+                    loadAndPlaySource({
+                        name: track.name,
+                        type: 'file',
+                        fileContent: track.fileContent, // Ini adalah objek Blob/File dari IndexedDB
+                        id: track.id
+                    }, listItem);
+                });
+                localSongsGrid.appendChild(listItem);
+            });
+
+            // Setelah merender, periksa apakah ada lagu yang sedang diputar dari IndexedDB
+            // dan terapkan highlight 'playing' jika cocok.
+            if (currentPlayingType === 'file' && audioPlayer.src) {
+                const currentId = playlist[currentTrackIndex]?.id;
+                if (currentId) {
+                    const currentItem = localSongsGrid.querySelector(`.local-song-list-item[data-id="${CSS.escape(currentId)}"]`);
+                    if (currentItem) {
+                        currentItem.classList.add('playing');
+                        currentPlayingGridItem = currentItem;
+                    }
+                }
+            }
+        }
+
+
+        selectMultipleFilesBtn.addEventListener('click', () => { fileInputMultiple.click(); });
+        selectFolderBtn.addEventListener('click', () => { fileInputFolder.click(); });
+
+        fileInputMultiple.addEventListener('change', (event) => {
+            const files = event.target.files;
+            if (files.length > 0) {
+                addFilesToPlaylist(files);
+            }
+            event.target.value = ''; // Clear input to allow re-selection of same files
+        });
+
+        fileInputFolder.addEventListener('change', (event) => {
+            const files = event.target.files;
+            if (files.length > 0) {
+                addFilesToPlaylist(files);
+            }
+            event.target.value = ''; // Clear input
+        });
+
+        // --- Render Local Radio Grid ---
+        async function renderLocalRadioStations() {
+            localRadioGrid.innerHTML = '';
+            for (const station of localRadioStations) {
+                const gridItem = document.createElement('div');
+                gridItem.classList.add('grid-item');
+                gridItem.dataset.url = station.url;
+                gridItem.dataset.name = station.name;
+
+                gridItem.innerHTML = `
+                    <img class="item-image" src="${station.img}" alt="${station.name} cover">
+                    <div class="grid-item-content" style="justify-content: flex-start;">
+                        <h3>${station.name}</h3>
+                    </div>
+                    <div class="play-overlay">
+                        <button class="play-button"><i class="fas fa-play"></i></button>
+                    </div>
+                `;
+
+                gridItem.addEventListener('click', () => {
+                    loadAndPlaySource({ name: station.name, type: 'radio', url: station.url, img: station.img }, gridItem);
+                });
+
+                localRadioGrid.appendChild(gridItem);
+            }
+        }
+
+        // --- Render International Radio List ---
+        async function renderInternationalRadioStations() {
+            internationalRadioList.innerHTML = '';
+            for (const station of internationalRadioStations) {
+                const listItem = document.createElement('div');
+                listItem.classList.add('radio-international-list-item');
+                listItem.dataset.url = station.url;
+                listItem.dataset.name = station.name;
+
+                listItem.innerHTML = `
+                    <img class="radio-image" src="${station.img}" alt="${station.name} cover">
+                    <div class="radio-info">
+                        <h3>${station.name}</h3>
+                        <p>Live Stream</p>
+                    </div>
+                    <div class="play-overlay">
+                        <button class="play-button"><i class="fas fa-play"></i></button>
+                    </div>
+                `;
+
+                listItem.addEventListener('click', () => {
+                    loadAndPlaySource({ name: station.name, type: 'radio', url: station.url, img: station.img }, listItem);
+                });
+
+                internationalRadioList.appendChild(listItem);
+            }
+        }
+
+        // --- Render Cloudinary Songs (Multi-Row Sliding) ---
+        async function renderCloudinarySongsByCategories() {
+            cloudinaryCategoriesContainer.innerHTML = '';
+
+            for (const categoryName in cloudinarySongsByCategory) {
+                const songsInThisCategory = cloudinarySongsByCategory[categoryName];
+
+                const categorySection = document.createElement('div');
+                categorySection.classList.add('cloudinary-category-section');
+
+                const categoryHeading = document.createElement('h3');
+                categoryHeading.textContent = categoryName;
+                categorySection.appendChild(categoryHeading);
+
+                const scrollRow = document.createElement('div');
+                scrollRow.classList.add('cloudinary-horizontal-scroll-row');
+
+                songsInThisCategory.forEach((song, index) => {
+                    const gridItem = document.createElement('div');
+                    gridItem.classList.add('grid-item');
+                    gridItem.dataset.publicId = song.public_id;
+                    gridItem.dataset.name = song.name;
+
+                    // Generate a consistent random image for each Cloudinary song
+                    const seed = song.public_id.charCodeAt(0) + song.public_id.charCodeAt(1); // Simple consistent seed
+                    const randomImageUrl = `https://picsum.photos/300/300?random=${seed}`;
+
+                    gridItem.innerHTML = `
+                        <div class="background-image" style="background-image: url('${randomImageUrl}');"></div>
+                        <div class="grid-item-content">
+                            <h3>${song.name}</h3>
+                        </div>
+                        <div class="play-overlay">
+                            <button class="play-button"><i class="fas fa-play"></i></button>
+                        </div>
+                    `;
+
+                    gridItem.addEventListener('click', () => {
+                        loadAndPlaySource({ name: song.name, type: 'cloudinary', public_id: song.public_id, img: randomImageUrl }, gridItem);
+                    });
+
+                    scrollRow.appendChild(gridItem);
+                });
+
+                categorySection.appendChild(scrollRow);
+                cloudinaryCategoriesContainer.appendChild(categorySection);
+            }
+        }
+
+        // --- Global Control Button Event Listeners ---
+        globalPlayPauseButton.addEventListener('click', () => {
+            if (audioPlayer.paused) {
+                if (audioPlayer.src) {
+                    audioPlayer.play().then(() => {
+                        globalPlayPauseButton.innerHTML = '<i class="fas fa-pause"></i>';
+                    }).catch(e => {
+                        console.error('Error playing audio:', e);
+                        let errorMessage = `Gagal memutar.\n\n`;
+                        if (e.name === 'NotAllowedError' || e.name === 'AbortError') {
+                            errorMessage += "1. Browser memblokir pemutaran otomatis. Silakan coba klik tombol play di kontrol bawah.";
+                        } else if (e.message.includes("Failed to load because no supported source was found") || e.message.includes("Mixed Content")) {
+                            errorMessage += "2. Konten campuran (Mixed Content): URL radio adalah HTTP dan halaman Anda HTTPS, atau URL tidak valid/offline.";
+                        } else {
+                            errorMessage += "3. Terjadi kesalahan tak terduga. URL mungkin tidak valid atau stasiun sedang offline.";
+                        }
+                        alert(errorMessage);
+                        globalPlayPauseButton.innerHTML = '<i class="fas fa-play"></i>';
+                        currentSongInfo.textContent = `Gagal memutar.`;
+                        audioPlayer.src = '';
+                        if (currentPlayingGridItem) {
+                            currentPlayingGridItem.classList.remove('playing');
+                            currentPlayingGridItem = null;
+                        }
+                        if (currentPlayingLocalFileUrl) {
+                            URL.revokeObjectURL(currentPlayingLocalFileUrl);
+                            currentPlayingLocalFileUrl = null;
+                        }
+                    });
+                } else {
+                    alert('Tidak ada lagu atau saluran radio yang dipilih.');
+                }
+            } else {
+                audioPlayer.pause();
+                globalPlayPauseButton.innerHTML = '<i class="fas fa-play"></i>';
+            }
+        });
+
+        globalPrevButton.addEventListener('click', () => {
+            if (currentPlayingType === 'file' && currentTrackIndex > 0) {
+                currentTrackIndex--;
+                const track = playlist[currentTrackIndex];
+                const targetItem = localSongsGrid.querySelector(`[data-id="${CSS.escape(track.id)}"]`);
+                loadAndPlaySource({ name: track.name, type: 'file', fileContent: track.fileContent, id: track.id }, targetItem);
+            } else if (currentPlayingType === 'cloudinary' && currentCloudinaryIndex > 0) {
+                currentCloudinaryIndex--;
+                const song = cloudinaryPlaylist[currentCloudinaryIndex];
+                const targetItem = cloudinaryCategoriesContainer.querySelector(`[data-public-id="${CSS.escape(song.public_id)}"]`);
+                loadAndPlaySource(song, targetItem);
+            }
+        });
+
+        globalNextButton.addEventListener('click', () => {
+            if (currentPlayingType === 'file' && currentTrackIndex < playlist.length - 1) {
+                currentTrackIndex++;
+                const track = playlist[currentTrackIndex];
+                const targetItem = localSongsGrid.querySelector(`[data-id="${CSS.escape(track.id)}"]`);
+                loadAndPlaySource({ name: track.name, type: 'file', fileContent: track.fileContent, id: track.id }, targetItem);
+            } else if (currentPlayingType === 'cloudinary' && currentCloudinaryIndex < cloudinaryPlaylist.length - 1) {
+                currentCloudinaryIndex++;
+                const song = cloudinaryPlaylist[currentCloudinaryIndex];
+                const targetItem = cloudinaryCategoriesContainer.querySelector(`[data-public-id="${CSS.escape(song.public_id)}"]`);
+                loadAndPlaySource(song, targetItem);
+            }
+        });
+
+        globalRepeatButton.addEventListener('click', () => {
+            if (currentPlayingType === 'file' || currentPlayingType === 'cloudinary') {
+                isRepeating = !isRepeating;
+                globalRepeatButton.classList.toggle('active', isRepeating);
+                audioPlayer.loop = isRepeating;
+                console.log(`Mode Repeat: ${isRepeating ? 'Aktif' : 'Nonaktif'}`);
+            }
+        });
+
+        audioPlayer.addEventListener('ended', () => {
+            // Revoke Object URL for local files when playback ends
+            if (currentPlayingType === 'file' && currentPlayingLocalFileUrl) {
+                URL.revokeObjectURL(currentPlayingLocalFileUrl);
+                currentPlayingLocalFileUrl = null;
+            }
+
+            if (currentPlayingType === 'radio') {
+                console.log("Radio stream ended. Attempting to restart...");
+                // Find the radio station object to reload it
+                let currentStation = null;
+                if (currentPlayingGridItem && currentPlayingGridItem.dataset.url) {
+                    currentStation = localRadioStations.find(s => s.url === currentPlayingGridItem.dataset.url) || internationalRadioStations.find(s => s.url === currentPlayingGridItem.dataset.url);
+                }
+
+                if (currentStation) {
+                    loadAndPlaySource(currentStation, currentPlayingGridItem); // Re-play with original object and highlight
+                } else {
+                    // Fallback if the original item couldn't be found
+                    const currentStationName = currentSongInfo.textContent.replace('Sedang mendengarkan: ', '');
+                    const currentStationUrl = audioPlayer.src; // This might still be a blob URL for radio after refresh, problematic
+                    // A better fallback is to store the actual radio URL in localStorage/history
+                    const lastPlayedItem = JSON.parse(localStorage.getItem('playerHistory') || '[]')[0];
+                    if (lastPlayedItem && lastPlayedItem.type === 'radio' && lastPlayedItem.url) {
+                           loadAndPlaySource({ name: lastPlayedItem.name, type: 'radio', url: lastPlayedItem.url, img: lastPlayedItem.img }, null);
+                    } else {
+                        alert("Radio stream berakhir dan tidak dapat dimuat ulang otomatis.");
+                        globalPlayPauseButton.innerHTML = '<i class="fas fa-play"></i>';
+                        currentSongInfo.textContent = 'Radio berakhir.';
+                        audioPlayer.src = '';
+                        if (currentPlayingGridItem) {
+                            currentPlayingGridItem.classList.remove('playing');
+                            currentPlayingGridItem = null;
+                        }
+                        if (currentPlayingLocalFileUrl) {
+                            URL.revokeObjectURL(currentPlayingLocalFileUrl);
+                            currentPlayingLocalFileUrl = null;
+                        }
+                    }
+                }
+                return;
+            }
+            if (isRepeating) {
+                audioPlayer.play();
+            } else if (currentPlayingType === 'file' && currentTrackIndex < playlist.length - 1) {
+                currentTrackIndex++;
+                const track = playlist[currentTrackIndex];
+                const targetItem = localSongsGrid.querySelector(`[data-id="${CSS.escape(track.id)}"]`);
+                loadAndPlaySource({ name: track.name, type: 'file', fileContent: track.fileContent, id: track.id }, targetItem);
+            } else if (currentPlayingType === 'cloudinary' && currentCloudinaryIndex < cloudinaryPlaylist.length - 1) {
+                currentCloudinaryIndex++;
+                const song = cloudinaryPlaylist[currentCloudinaryIndex];
+                const targetItem = cloudinaryCategoriesContainer.querySelector(`[data-public-id="${CSS.escape(song.public_id)}"]`);
+                loadAndPlaySource(song, targetItem);
+            } else {
+                globalPlayPauseButton.innerHTML = '<i class="fas fa-play"></i>';
+                currentSongInfo.textContent = 'Daftar putar selesai.';
+                audioPlayer.currentTime = 0;
+                if (currentPlayingGridItem) {
+                    currentPlayingGridItem.classList.remove('playing');
+                    currentPlayingGridItem = null;
+                }
+            }
+        });
+
+        // --- Progress Bar Interaction ---
+        progressContainer.addEventListener('click', (e) => {
+            if (audioPlayer.duration) { // Only seek if duration is available
+                const clickX = e.offsetX; // Get X position of click relative to the container
+                const containerWidth = progressContainer.clientWidth;
+                const seekTime = (clickX / containerWidth) * audioPlayer.duration;
+                audioPlayer.currentTime = seekTime;
+            }
+        });
+
+        audioPlayer.addEventListener('timeupdate', updateProgressBar);
+        audioPlayer.addEventListener('loadedmetadata', updateProgressBar);
+
+        // --- History / Recently Played & Most Played ---
+        function updateHistory(name, type, img = '', id = null, public_id = null, url = null) {
+            const key = 'playerHistory';
+            let list = [];
+            try {
+                const raw = localStorage.getItem(key);
+                list = raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                console.error("Error parsing history from local storage:", e);
+                list = []; // Reset if corrupted
+            }
+
+            const now = new Date().toISOString();
+
+            // Ensure unique identification for history items
+            let uniqueId;
+            if (type === 'file') {
+                uniqueId = `file-${id}`; // Use IndexedDB ID for local files
+            } else if (type === 'cloudinary') {
+                uniqueId = `cloudinary-${public_id}`;
+            } else if (type === 'radio') {
+                uniqueId = `radio-${url}`;
+            } else {
+                uniqueId = `${type}-${name}`; // Fallback, though should be covered
+            }
+
+            const foundIndex = list.findIndex(item => item.uniqueId === uniqueId);
+
+            if (foundIndex !== -1) {
+                list[foundIndex].count = (list[foundIndex].count || 0) + 1; // Ensure count exists
+                list[foundIndex].lastPlayed = now;
+            } else {
+                list.push({
+                    name,
+                    type,
+                    count: 1,
+                    lastPlayed: now,
+                    img: img,
+                    uniqueId: uniqueId,
+                    id: id, // Store IndexedDB ID for local files
+                    public_id: public_id, // Store public_id for cloudinary
+                    url: url // Store URL for radio
+                });
+            }
+
+            // Keep only top N items
+            list.sort((a, b) => b.lastPlayed.localeCompare(a.lastPlayed)); // Sort by most recently played first
+            list = list.slice(0, 20); // Keep max 20 items
+
+            try {
+                localStorage.setItem(key, JSON.stringify(list));
+            } catch (e) {
+                console.error("Error saving history to local storage:", e);
+            }
+            renderHistory();
+        }
+
+        async function renderHistory() {
+            historyContainer.innerHTML = '';
+            let list = [];
+            try {
+                const raw = localStorage.getItem('playerHistory');
+                list = raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                console.error("Error loading history for rendering:", e);
+            }
+
+            if (list.length === 0) {
+                historyContainer.innerHTML = '<p style="color: var(--text-medium); text-align: center; padding: 20px;">Belum ada aktivitas. Mulai putar lagu atau radio!</p>';
+                return;
+            }
+
+            for (const item of list) {
+                const listItem = document.createElement('div');
+                listItem.classList.add('history-list-item');
+                // Store relevant data attributes for replaying
+                listItem.dataset.name = item.name;
+                listItem.dataset.type = item.type;
+                listItem.dataset.uniqueId = item.uniqueId; // For removal
+
+                if (item.type === 'file') listItem.dataset.id = item.id;
+                if (item.type === 'cloudinary') listItem.dataset.publicId = item.public_id;
+                if (item.type === 'radio') listItem.dataset.url = item.url;
+
+                let imgSrc = item.img; // Use the image stored in history
+                if (!imgSrc || (item.type === 'file' && !item.img)) {
+                    // Default image for local files if not explicitly set
+                    imgSrc = `https://picsum.photos/60/60?random=${Math.floor(Math.random() * 1000)}`;
+                } else if (item.type === 'radio' && !imgSrc) {
+                    // Fallback for radio station images if needed
+                    const radioStation = localRadioStations.find(s => s.url === item.url) || internationalRadioStations.find(s => s.url === item.url);
+                    if (radioStation) imgSrc = radioStation.img;
+                }
+
+                listItem.innerHTML = `
+                    <img class="item-image" src="${imgSrc}" alt="${item.name} cover">
+                    <div class="item-info-text">
+                        <h3>${item.name}</h3>
+                        <p>${item.type === 'radio' ? 'Radio' : (item.type === 'cloudinary' ? 'Lagu Cloud' : 'Lagu Lokal')} &bull; Dimainkan ${item.count}x</p>
+                    </div>
+                    <div class="play-overlay">
+                        <button class="play-button"><i class="fas fa-play"></i></button>
+                    </div>
+                `;
+
+                listItem.addEventListener('click', async () => {
+                    // Determine the source object based on type and data attributes
+                    const sourceObj = { name: item.name, type: item.type, img: imgSrc };
+
+                    if (item.type === 'file') {
+                        // Untuk memutar lagu lokal dari riwayat, kita **harus** mengambil kembali objek File yang sebenarnya dari IndexedDB.
+                        try {
+                            const transaction = db.transaction([STORE_NAME], 'readonly');
+                            const objectStore = transaction.objectStore(STORE_NAME);
+                            const request = objectStore.get(item.id); // Ambil berdasarkan IndexedDB ID
+
+                            request.onsuccess = (event) => {
+                                const retrievedSong = event.target.result;
+                                if (retrievedSong && retrievedSong.fileContent) { // Pastikan fileContent ada
+                                    sourceObj.fileContent = retrievedSong.fileContent; // Ini adalah objek Blob/File yang sebenarnya
+                                    sourceObj.id = retrievedSong.id; // Pastikan ID diteruskan untuk currentTrackIndex
+                                    loadAndPlaySource(sourceObj, listItem);
+                                } else {
+                                    alert('Lagu lokal ini tidak lagi tersedia (mungkin sudah dihapus dari penyimpanan browser atau datanya rusak).');
+                                    removeHistoryItem(item.uniqueId); // Hapus dari riwayat jika tidak ditemukan
+                                }
+                            };
+                            request.onerror = (e) => {
+                                console.error('Error getting song from IndexedDB for history:', e.target.error);
+                                alert('Terjadi kesalahan saat mengambil lagu lokal dari riwayat.');
+                                removeHistoryItem(item.uniqueId);
+                            };
+                        } catch (e) {
+                            console.error('IndexedDB transaction error for history:', e);
+                            alert('Gagal mengakses penyimpanan lagu lokal untuk riwayat.');
+                            removeHistoryItem(item.uniqueId);
+                        }
+                    } else if (item.type === 'cloudinary') {
+                        sourceObj.public_id = item.public_id;
+                        loadAndPlaySource(sourceObj, listItem);
+                    } else if (item.type === 'radio') {
+                        sourceObj.url = item.url;
+                        loadAndPlaySource(sourceObj, listItem);
+                    }
+                });
+                historyContainer.appendChild(listItem);
+            }
+
+            // Setelah merender history, periksa apakah ada item yang sedang diputar
+            // dan terapkan highlight 'playing' jika cocok.
+            if (audioPlayer.src && currentPlayingType) {
+                let uniqueIdToFind = null;
+                if (currentPlayingType === 'file' && playlist[currentTrackIndex]?.id) {
+                    uniqueIdToFind = `file-${playlist[currentTrackIndex].id}`;
+                } else if (currentPlayingType === 'cloudinary' && cloudinaryPlaylist[currentCloudinaryIndex]?.public_id) {
+                    uniqueIdToFind = `cloudinary-${cloudinaryPlaylist[currentCloudinaryIndex].public_id}`;
+                } else if (currentPlayingType === 'radio' && audioPlayer.src) {
+                    // Untuk radio, kita perlu menemukan item terakhir yang diputar dari history
+                    // karena audioPlayer.src mungkin sudah menjadi blob URL untuk radio.
+                    const lastPlayedItem = JSON.parse(localStorage.getItem('playerHistory') || '[]')[0];
+                    if (lastPlayedItem && lastPlayedItem.type === 'radio') {
+                        uniqueIdToFind = lastPlayedItem.uniqueId;
+                    }
+                }
+
+                if (uniqueIdToFind) {
+                    const currentItem = historyContainer.querySelector(`.history-list-item[data-unique-id="${CSS.escape(uniqueIdToFind)}"]`);
+                    if (currentItem) {
+                        currentItem.classList.add('playing');
+                        // Tidak perlu update currentPlayingGridItem di sini karena itu untuk item aktif di grid/list utama
+                        // history adalah daftar terpisah.
+                    }
+                }
+            }
+        }
+
+        // Helper to remove item from history
+        function removeHistoryItem(uniqueId) {
+            const key = 'playerHistory';
+            let list = [];
+            try {
+                const raw = localStorage.getItem(key);
+                list = raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                console.error("Error parsing history for removal:", e);
+                return;
+            }
+
+            const updatedList = list.filter(item => item.uniqueId !== uniqueId);
+            try {
+                localStorage.setItem(key, JSON.stringify(updatedList));
+            } catch (e) {
+                console.error("Error saving history after removal:", e);
+            }
+            renderHistory(); // Re-render history after removal
+        }
+
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            renderLocalRadioStations();
+            renderInternationalRadioStations();
+            renderCloudinarySongsByCategories();
+
+            try {
+                await openIndexedDB(); // Buka IndexedDB terlebih dahulu
+                // PENTING: Saat memuat dari IndexedDB, pastikan `fileContent` disertakan dalam objek `playlist`
+                playlist = await loadSongsFromIndexedDB();
+                renderLocalSongs(); // Render lagu lokal yang dimuat
+            } catch (error) {
+                console.error("Initialization error with IndexedDB:", error);
+                alert("Gagal memuat lagu lokal Anda. Pastikan browser Anda mendukung IndexedDB dan tidak ada masalah kuota penyimpanan.");
+                localSongsGrid.innerHTML = `
+                    <div class="grid-item placeholder">
+                        <div class="background-image" style="background-image: url('https://picsum.photos/300/300?random=1'); filter: brightness(0.4);"></div>
+                        <div class="grid-item-content">
+                            <h3>Tidak dapat memuat lagu lokal.</h3>
+                            <p style="font-size: 0.8em; color: var(--text-medium);">Coba perbarui halaman atau periksa setelan browser Anda.</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderHistory(); // Render history on start
+
+            globalPrevButton.disabled = true;
+            globalNextButton.disabled = true;
+            globalRepeatButton.disabled = true;
+        });
+
+    </script>
+
+</body>
+</html>
