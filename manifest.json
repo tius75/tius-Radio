@@ -2,18 +2,18 @@
   "name": "Music Player Tius",
   "short_name": "Tius Music",
   "description": "Pemutar musik pribadi dengan radio lokal, cloud, dan lagu offline.",
-  "start_url": "/tius-Radio/", // <--- UBAH INI!
+  "start_url": "/tius-Radio/",
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#1DB954",
   "icons": [
     {
-      "src": "/tius-Radio/icons/logo1.png", // <--- UBAH INI!
+      "src": "/tius-Radio/logo1.png", // <--- UBAH INI! (tanpa 'icons/')
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/tius-Radio/icons/logo.png", // <--- UBAH INI!
+      "src": "/tius-Radio/logo.png", // <--- UBAH INI! (tanpa 'icons/')
       "sizes": "512x512",
       "type": "image/png"
     }
